@@ -3,3 +3,8 @@ uvicorn[standard]
 python-dotenv
 pydantic
 pydantic-settings
+python-pptx
+openpyxl
+pypdf
+pytest
+httpx
