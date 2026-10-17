@@ -8,6 +8,7 @@ from pypdf import PdfWriter
 from reportlab.pdfgen import canvas
 
 from app.knowledge.parsers.dispatcher import parse_document
+from app.knowledge.parsers.legacy import LegacyConversionError, parse_legacy
 from app.knowledge.service import KnowledgeService
 
 
@@ -99,6 +100,13 @@ def test_path_traversal_is_rejected(tmp_path: Path) -> None:
     service = KnowledgeService(knowledge, tmp_path / "index.json")
     with pytest.raises(ValueError):
         service.index_file("../outside.xlsx")
+
+
+def test_legacy_conversion_is_disabled_by_default(tmp_path: Path) -> None:
+    legacy_file = tmp_path / "legacy.ppt"
+    legacy_file.write_bytes(b"synthetic legacy file")
+    with pytest.raises(LegacyConversionError, match="disabled"):
+        parse_legacy(legacy_file, "legacy.ppt", enabled=False)
 
 
 def test_unsupported_file_type_is_rejected(tmp_path: Path) -> None:
