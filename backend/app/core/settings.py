@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     HOST: str
     PORT: int
 
-    # LLM
+    # LLM (not used by local keyword search)
     DEFAULT_LLM_PROVIDER: str = ""
     DEFAULT_MODEL: str = ""
 
@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     GROQ_API_KEY: str = ""
     ANTHROPIC_API_KEY: str = ""
+
+    # Local engineering knowledge
+    KNOWLEDGE_ROOT: str = "knowledge"
+    KNOWLEDGE_INDEX_PATH: str = ".knowledge_index/index.json"
+    ENABLE_LEGACY_CONVERSION: bool = False
 
     model_config = SettingsConfigDict(
         env_file=".env",
