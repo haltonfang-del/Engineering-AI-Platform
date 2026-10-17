@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Local engineering knowledge and generated indexes
+backend/knowledge/*
+!backend/knowledge/.gitkeep
+backend/.knowledge_index/
+*.index.json
