@@ -1,152 +1,23 @@
 # System Architecture
 
-# Overview
-
-Engineering AI Platform adopts a modular architecture designed for scalability, maintainability, and AI collaboration.
-
-The repository follows the Documentation First methodology, ensuring that architecture decisions precede implementation.
-
----
-
-# High-Level Architecture
-
-```
-+------------------------+
-|        Frontend        |
-+-----------+------------+
-            |
-            v
-+------------------------+
-|        Backend         |
-+-----------+------------+
-            |
-            +-------------------+
-            |                   |
-            v                   v
-+----------------+     +------------------+
-| AI Providers   |     | Knowledge Engine |
-+----------------+     +------------------+
-            |                   |
-            +---------+---------+
-                      |
-                      v
-              Project Repository
-           (Single Source of Truth)
-```
-
----
-
-# Core Components
-
-## Frontend
-
-Responsibilities:
-
-- User Interface
-- Authentication
-- Chat Interface
-- File Upload
-- Knowledge Search
-
----
+## Overview
+Engineering AI Platform follows a documentation-first, modular architecture. The first knowledge-search implementation is provider-independent and processes documents locally.
 
 ## Backend
+FastAPI exposes the existing root/configuration endpoints and versioned API routes. The API router includes health and knowledge-search endpoints.
 
-Responsibilities:
+## Knowledge layer (Sprint 002)
+- Parsers extract text from PPTX slides, XLSX cells, and text-based PDF pages.
+- Legacy PPT/XLS conversion is optional and requires LibreOffice plus explicit configuration.
+- A local JSON index stores extracted text and source metadata.
+- Case-insensitive keyword search returns snippets and source references.
+- No database, vector store, OCR, or external AI provider is required for this phase.
 
-- API Services
-- Authentication
-- AI Routing
-- Business Logic
-- Logging
+## Source traceability
+Each indexed chunk records its source path and filename, file type, and where available slide number, PDF page number, worksheet name, and cell coordinate. Excel formulas are recorded as formula text; cached values are included when available. Formulas are not recalculated and source workbooks are not modified.
 
----
+## Storage and security
+The knowledge root and index path are configurable with `KNOWLEDGE_ROOT` and `KNOWLEDGE_INDEX_PATH`. Indexing rejects absolute paths, traversal outside the configured root, and unsupported extensions. Source files, generated index files, and secrets must not be committed. Company documents must only be processed in an approved internal environment.
 
-## AI Layer
-
-Supports multiple providers.
-
-Examples:
-
-- OpenAI
-- Anthropic
-- Google Gemini
-- Local LLM
-
-New providers should be added through adapters.
-
----
-
-## Prompt Layer
-
-Responsibilities:
-
-- Prompt Templates
-- System Prompt
-- Prompt Version Control
-
-Prompts should not be hard-coded inside application logic.
-
----
-
-## Knowledge Layer
-
-Responsibilities:
-
-- Engineering Documents
-- Standards
-- Design Guidelines
-- Internal Documentation
-
-Knowledge should remain independent from AI providers.
-
----
-
-## Documentation Layer
-
-Documentation defines:
-
-- Architecture
-- Standards
-- AI Context
-- Project Status
-
-Documentation is part of the system architecture.
-
----
-
-# Design Principles
-
-- Modular
-- Scalable
-- Maintainable
-- Documentation First
-- AI Friendly
-
----
-
-# Future Architecture
-
-Planned modules include:
-
-- Workflow Engine
-- MCP Integration
-- Agent Framework
-- Plugin System
-- Enterprise Authentication
-- Analytics Dashboard
-
----
-
-# Repository Structure
-
-```
-Engineering-AI-Platform/
-
-docs/
-backend/
-frontend/
-knowledge/
-prompts/
-scripts/
-```
+## Deferred
+OCR for scanned PDFs, image and chart interpretation, semantic/vector search, LLM-generated answers, authentication/authorization, and production deployment controls are not part of this first implementation.
