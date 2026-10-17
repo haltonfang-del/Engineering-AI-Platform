@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 
-router = APIRouter(
-    tags=["Health"],
-)
+from app.api.v1.knowledge import router as knowledge_router
+
+router = APIRouter()
+
+router.include_router(knowledge_router)
 
 
-@router.get("/health")
+@router.get("/health", tags=["Health"])
 def health():
-    return {
-        "status": "ok"
-    }
+    return {"status": "ok"}
