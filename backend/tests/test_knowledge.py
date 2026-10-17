@@ -5,6 +5,7 @@ from openpyxl import Workbook
 from pptx import Presentation
 from pptx.util import Inches
 from pypdf import PdfWriter
+from reportlab.pdfgen import canvas
 
 from app.knowledge.parsers.dispatcher import parse_document
 from app.knowledge.service import KnowledgeService
@@ -26,6 +27,14 @@ def make_xlsx(path: Path) -> None:
     sheet["B1"] = 12.5
     sheet["C1"] = "=B1*2"
     workbook.save(path)
+
+
+def make_text_pdf(path: Path) -> None:
+    document = canvas.Canvas(str(path))
+    document.drawString(72, 720, "Bearing load specification")
+    document.showPage()
+    document.drawString(72, 720, "Second page torque limits")
+    document.save()
 
 
 def make_blank_pdf(path: Path) -> None:
@@ -53,6 +62,16 @@ def test_xlsx_parser_keeps_sheet_and_cell(tmp_path: Path) -> None:
     assert torque.sheet_name == "DesignData"
     assert "Torque" in torque.content
     assert "Formula: =B1*2" in formula.content
+
+
+def test_pdf_parser_keeps_page_number(tmp_path: Path) -> None:
+    path = tmp_path / "text.pdf"
+    make_text_pdf(path)
+    chunks = parse_document(path, "text.pdf")
+    assert len(chunks) == 2
+    assert chunks[0].page_number == 1
+    assert chunks[1].page_number == 2
+    assert "Bearing load specification" in chunks[0].content
 
 
 def test_blank_pdf_returns_no_text_chunks(tmp_path: Path) -> None:
