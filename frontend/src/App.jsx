@@ -69,14 +69,16 @@ export default function App() {
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
-  const [sortBy, setSortBy] = useState("relevance");
   const [visuals, setVisuals] = useState([]);
   const [visualsLoading, setVisualsLoading] = useState(false);
 
   const question = searched ? query : exampleQuestion;
   const bullets = searched ? results.slice(0, 3).map((item) => item.content) : examplePoints;
   const sourceGroups = groupSources(results);
-  const visualSource = results[0];
+  const latestPptxSource = sourceGroups
+    .filter((source) => source.file_type === "pptx")
+    .sort((a, b) => new Date(b.source_modified_at || 0) - new Date(a.source_modified_at || 0))[0] || null;
+  const visualSource = latestPptxSource?.matches[0] || results[0];
 
   useEffect(() => {
     let active = true;
@@ -132,13 +134,7 @@ export default function App() {
       setError("請輸入工程問題或文件關鍵字。");
       return;
     }
-    await performSearch(q, sortBy);
-  }
-
-  async function changeSort(event) {
-    const ordering = event.target.value;
-    setSortBy(ordering);
-    if (searched && query.trim()) await performSearch(query.trim(), ordering);
+    await performSearch(q, "relevance");
   }
 
   async function scanFolder() {
@@ -223,47 +219,21 @@ export default function App() {
         </section>
 
         <section className="answer-section source-section">
-          <div className="section-title-row">
-            <h3>B. 原始文件依據</h3>
-            {searched && results.length > 0 && (
-              <label className="sort-control">
-                <span>排序</span>
-                <select value={sortBy} onChange={changeSort}>
-                  <option value="relevance">相關度</option>
-                  <option value="recent">最新更新</option>
-                </select>
-              </label>
-            )}
-          </div>
-          {searched && results.length ? (
-            <div className="source-list">
-              {sourceGroups.map((source) => (
-                <article className="source-item" key={source.source_path}>
-                  <div className="source-heading">
-                    <FileIcon type={source.file_type} />
-                    <div>
-                      <strong>{source.source_name}</strong>
-                      <small>{source.source_path}</small>
-                    </div>
-                  </div>
-                  <div className="source-foot">
-                    <span>{source.matches.length} 個命中位置</span>
-                    <span>{updatedAt(source.source_modified_at)}</span>
-                  </div>
-                  <div className="source-matches">
-                    {source.matches.map((item, index) => (
-                      <div className="source-excerpt" key={`${source.source_path}-${index}`}>
-                        <span className="location-chip">{locationOf(item)}</span>
-                        <p>{item.content}</p>
-                        <small>{item.match_count} 個詞組命中</small>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
+          <h3>B. 原始文件依據</h3>
+          {searched && latestPptxSource ? (
+            <article className="source-item latest-source">
+              <div className="source-heading">
+                <FileIcon type={latestPptxSource.file_type} />
+                <div>
+                  <strong>{latestPptxSource.source_name}</strong>
+                  <small>依檔案修改時間排序</small>
+                </div>
+                <span className="latest-badge">最新更新</span>
+              </div>
+              <div className="source-foot"><span>{updatedAt(latestPptxSource.source_modified_at)}</span></div>
+            </article>
           ) : searched ? (
-            <div className="no-sources"><ShieldCheck size={18} />沒有可引用的來源。請調整關鍵字後再搜尋。</div>
+            <div className="no-sources"><ShieldCheck size={18} />沒有找到符合關鍵字的 PPTX 文件。</div>
           ) : (
             <div className="no-sources"><ExternalLink size={18} />執行搜尋後，這裡會顯示文件名稱與頁碼、投影片或儲存格位置。</div>
           )}
