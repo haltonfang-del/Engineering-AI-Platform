@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from openpyxl import Workbook
+from docx import Document
 from pptx import Presentation
 from pptx.util import Inches
 from pypdf import PdfWriter
@@ -45,6 +46,16 @@ def make_blank_pdf(path: Path) -> None:
         writer.write(stream)
 
 
+def make_docx(path: Path) -> None:
+    document = Document()
+    document.add_heading("Tolerance", level=1)
+    document.add_paragraph("Use the approved dimensional tolerance.")
+    table = document.add_table(rows=1, cols=2)
+    table.cell(0, 0).text = "Dimension"
+    table.cell(0, 1).text = "Tolerance"
+    document.save(path)
+
+
 def test_pptx_parser_keeps_slide_number(tmp_path: Path) -> None:
     path = tmp_path / "sample.pptx"
     make_pptx(path)
@@ -79,6 +90,14 @@ def test_blank_pdf_returns_no_text_chunks(tmp_path: Path) -> None:
     path = tmp_path / "blank.pdf"
     make_blank_pdf(path)
     assert parse_document(path, "blank.pdf") == []
+
+
+def test_docx_parser_keeps_heading_paragraph_and_table(tmp_path: Path) -> None:
+    path = tmp_path / "guide.docx"
+    make_docx(path)
+    chunks = parse_document(path, "guide.docx")
+    assert any(chunk.section_name == "Tolerance" and "approved dimensional tolerance" in chunk.content for chunk in chunks)
+    assert any(chunk.table_number == 1 and "Dimension | Tolerance" in chunk.content for chunk in chunks)
 
 
 def test_keyword_search_returns_source_metadata(tmp_path: Path) -> None:
@@ -116,3 +135,31 @@ def test_unsupported_file_type_is_rejected(tmp_path: Path) -> None:
     service = KnowledgeService(knowledge, tmp_path / "index.json")
     with pytest.raises(ValueError, match="Unsupported"):
         service.index_file("notes.txt")
+
+
+def test_scan_indexes_new_files_and_skips_unchanged_files(tmp_path: Path) -> None:
+    knowledge = tmp_path / "knowledge"
+    nested = knowledge / "nested"
+    nested.mkdir(parents=True)
+    make_pptx(nested / "sample.pptx")
+    (nested / "ignore.ppt").write_bytes(b"legacy source")
+    service = KnowledgeService(knowledge, tmp_path / "index.json")
+    first = service.scan()
+    second = service.scan()
+    assert first["files_scanned"] == 1
+    assert first["files_indexed"] == 1
+    assert second["files_unchanged"] == 1
+    assert service.search("Spacer")[0].source_path == "nested/sample.pptx"
+
+
+def test_scan_removes_missing_files_from_index_without_touching_sources(tmp_path: Path) -> None:
+    knowledge = tmp_path / "knowledge"
+    knowledge.mkdir()
+    source = knowledge / "sample.pptx"
+    make_pptx(source)
+    service = KnowledgeService(knowledge, tmp_path / "index.json")
+    service.scan()
+    source.unlink()
+    result = service.scan()
+    assert result["files_removed"] == 1
+    assert service.search("Spacer") == []

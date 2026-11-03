@@ -4,6 +4,7 @@ python-dotenv
 pydantic
 pydantic-settings
 python-pptx
+python-docx
 openpyxl
 pypdf
 pytest

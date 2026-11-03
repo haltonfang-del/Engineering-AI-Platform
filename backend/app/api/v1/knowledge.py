@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.core.settings import settings
 from app.knowledge.parsers.legacy import LegacyConversionError
-from app.knowledge.schemas import IndexRequest, IndexResponse, SearchResponse
+from app.knowledge.schemas import IndexRequest, IndexResponse, ScanResponse, SearchResponse
 from app.knowledge.service import KnowledgeService
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge Search"])
@@ -35,6 +35,14 @@ def index_document(request: IndexRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.post("/scan", response_model=ScanResponse)
+def scan_knowledge():
+    try:
+        return get_knowledge_service().scan()
+    except (ValueError, RuntimeError) as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
 
