@@ -3,9 +3,10 @@ from app.knowledge.parsers.legacy import parse_legacy
 from app.knowledge.parsers.pdf_parser import parse_pdf
 from app.knowledge.parsers.pptx_parser import parse_pptx
 from app.knowledge.parsers.xlsx_parser import parse_xlsx
+from app.knowledge.parsers.docx_parser import parse_docx
 from app.knowledge.schemas import DocumentChunk
 
-SUPPORTED_SUFFIXES = {".pptx", ".xlsx", ".pdf", ".ppt", ".xls"}
+SUPPORTED_SUFFIXES = {".pptx", ".xlsx", ".pdf", ".docx", ".ppt", ".xls"}
 
 
 def parse_document(path: Path, relative_path: str, enable_legacy_conversion: bool = False) -> list[DocumentChunk]:
@@ -14,6 +15,8 @@ def parse_document(path: Path, relative_path: str, enable_legacy_conversion: boo
         return parse_pptx(path, relative_path)
     if suffix == ".xlsx":
         return parse_xlsx(path, relative_path)
+    if suffix == ".docx":
+        return parse_docx(path, relative_path)
     if suffix == ".pdf":
         return parse_pdf(path, relative_path)
     if suffix in {".ppt", ".xls"}:

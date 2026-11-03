@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from app.core.settings import settings
 from app.knowledge.parsers.legacy import LegacyConversionError
-from app.knowledge.schemas import IndexRequest, IndexResponse, SearchResponse
+from app.knowledge.schemas import IndexRequest, IndexResponse, ScanResponse, SearchResponse, VisualsResponse
 from app.knowledge.service import KnowledgeService
 
 router = APIRouter(prefix="/knowledge", tags=["Knowledge Search"])
@@ -38,13 +38,38 @@ def index_document(request: IndexRequest):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@router.post("/scan", response_model=ScanResponse)
+def scan_knowledge():
+    try:
+        return get_knowledge_service().scan()
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/visuals", response_model=VisualsResponse)
+def document_visuals(
+    path: str = Query(min_length=1, description="Path relative to the configured knowledge root"),
+    page_number: int | None = Query(default=None, ge=1),
+    slide_number: int | None = Query(default=None, ge=1),
+):
+    try:
+        return get_knowledge_service().extract_visuals(path, page_number=page_number, slide_number=slide_number)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="File was not found under the configured knowledge root.")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
 @router.get("/search", response_model=SearchResponse)
 def search_knowledge(
     q: str = Query(min_length=1, description="Case-insensitive keyword query"),
     limit: int = Query(default=10, ge=1, le=100),
+    sort_by: str = Query(default="relevance", pattern="^(relevance|recent)$"),
 ):
     try:
-        results = get_knowledge_service().search(q, limit=limit)
+        results = get_knowledge_service().search(q, limit=limit, sort_by=sort_by)
         return SearchResponse(query=q, result_count=len(results), results=results)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

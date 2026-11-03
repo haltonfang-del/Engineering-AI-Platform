@@ -11,6 +11,10 @@ class DocumentChunk(BaseModel):
     slide_number: int | None = None
     sheet_name: str | None = None
     cell_reference: str | None = None
+    section_name: str | None = None
+    paragraph_number: int | None = None
+    table_number: int | None = None
+    source_modified_at: str | None = None
     extracted_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 
@@ -23,6 +27,27 @@ class IndexResponse(BaseModel):
     chunks_indexed: int
 
 
+class ScanResponse(BaseModel):
+    files_scanned: int
+    files_indexed: int
+    files_unchanged: int
+    files_removed: int
+    chunks_indexed: int
+
+
+class VisualAsset(BaseModel):
+    filename: str
+    content_type: str
+    data_base64: str
+
+
+class VisualsResponse(BaseModel):
+    source_path: str
+    location: str
+    assets: list[VisualAsset]
+    truncated: bool = False
+
+
 class SearchResult(BaseModel):
     content: str
     source_name: str
@@ -32,6 +57,10 @@ class SearchResult(BaseModel):
     slide_number: int | None = None
     sheet_name: str | None = None
     cell_reference: str | None = None
+    section_name: str | None = None
+    paragraph_number: int | None = None
+    table_number: int | None = None
+    source_modified_at: str | None = None
     match_count: int
 
 
