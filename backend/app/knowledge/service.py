@@ -121,10 +121,12 @@ class KnowledgeService:
             "chunks_indexed": chunks_indexed,
         }
 
-    def search(self, query: str, limit: int = 10) -> list[SearchResult]:
+    def search(self, query: str, limit: int = 10, sort_by: str = "relevance") -> list[SearchResult]:
         normalized_query = unicodedata.normalize("NFKC", query).strip().casefold()
         if not normalized_query:
             raise ValueError("Search query must not be empty.")
+        if sort_by not in {"relevance", "recent"}:
+            raise ValueError("sort_by must be 'relevance' or 'recent'.")
         terms: list[str] = []
         for match in CJK_RUN.finditer(normalized_query):
             run = match.group(0)
@@ -157,5 +159,15 @@ class KnowledgeService:
                         source_modified_at=item.get("source_modified_at"),
                         match_count=exact_count + matched_terms,
                     )))
-        results.sort(key=lambda item: (-item[0], item[1].source_path))
+        if sort_by == "recent":
+            results.sort(
+                key=lambda item: (
+                    item[1].source_modified_at or "",
+                    item[0],
+                    item[1].source_path,
+                ),
+                reverse=True,
+            )
+        else:
+            results.sort(key=lambda item: (-item[0], item[1].source_path))
         return [result for _, result in results[:max(1, min(limit, 100))]]

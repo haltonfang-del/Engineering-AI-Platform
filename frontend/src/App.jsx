@@ -42,6 +42,25 @@ function updatedAt(value) {
   return `更新於 ${new Date(value).toLocaleDateString("zh-TW")}`;
 }
 
+function groupSources(items) {
+  const grouped = new Map();
+  for (const item of items) {
+    const source = grouped.get(item.source_path) || {
+      source_name: item.source_name,
+      source_path: item.source_path,
+      file_type: item.file_type,
+      source_modified_at: item.source_modified_at,
+      matches: [],
+    };
+    source.matches.push(item);
+    if ((item.source_modified_at || "") > (source.source_modified_at || "")) {
+      source.source_modified_at = item.source_modified_at;
+    }
+    grouped.set(item.source_path, source);
+  }
+  return [...grouped.values()];
+}
+
 export default function App() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
@@ -50,22 +69,18 @@ export default function App() {
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
+  const [sortBy, setSortBy] = useState("relevance");
 
   const question = searched ? query : exampleQuestion;
   const bullets = searched ? results.slice(0, 3).map((item) => item.content) : examplePoints;
+  const sourceGroups = groupSources(results);
 
-  async function search(event) {
-    event?.preventDefault();
-    const q = query.trim();
-    if (!q) {
-      setError("請輸入工程問題或文件關鍵字。");
-      return;
-    }
+  async function performSearch(q, ordering) {
     setLoading(true);
     setError("");
     setSearched(true);
     try {
-      const response = await fetch(`${API}/api/v1/knowledge/search?q=${encodeURIComponent(q)}&limit=30`);
+      const response = await fetch(`${API}/api/v1/knowledge/search?q=${encodeURIComponent(q)}&limit=100&sort_by=${ordering}`);
       if (!response.ok) throw new Error(`搜尋服務回應 ${response.status}`);
       const data = await response.json();
       setResults(data.results || []);
@@ -75,6 +90,22 @@ export default function App() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function search(event) {
+    event?.preventDefault();
+    const q = query.trim();
+    if (!q) {
+      setError("請輸入工程問題或文件關鍵字。");
+      return;
+    }
+    await performSearch(q, sortBy);
+  }
+
+  async function changeSort(event) {
+    const ordering = event.target.value;
+    setSortBy(ordering);
+    if (searched && query.trim()) await performSearch(query.trim(), ordering);
   }
 
   async function scanFolder() {
@@ -147,23 +178,41 @@ export default function App() {
         </section>
 
         <section className="answer-section source-section">
-          <h3>B. 原始文件依據</h3>
+          <div className="section-title-row">
+            <h3>B. 原始文件依據</h3>
+            {searched && results.length > 0 && (
+              <label className="sort-control">
+                <span>排序</span>
+                <select value={sortBy} onChange={changeSort}>
+                  <option value="relevance">相關度</option>
+                  <option value="recent">最新更新</option>
+                </select>
+              </label>
+            )}
+          </div>
           {searched && results.length ? (
             <div className="source-list">
-              {results.map((item, index) => (
-                <article className="source-item" key={`${item.source_path}-${index}`}>
+              {sourceGroups.map((source) => (
+                <article className="source-item" key={source.source_path}>
                   <div className="source-heading">
-                    <FileIcon type={item.file_type} />
+                    <FileIcon type={source.file_type} />
                     <div>
-                      <strong>{item.source_name}</strong>
-                      <small>{item.source_path}</small>
+                      <strong>{source.source_name}</strong>
+                      <small>{source.source_path}</small>
                     </div>
                   </div>
-                  <span className="location-chip">{locationOf(item)}</span>
-                  <p>{item.content}</p>
                   <div className="source-foot">
-                    <span>{item.match_count} 個關鍵字命中</span>
-                    <span>{updatedAt(item.source_modified_at)}</span>
+                    <span>{source.matches.length} 個命中位置</span>
+                    <span>{updatedAt(source.source_modified_at)}</span>
+                  </div>
+                  <div className="source-matches">
+                    {source.matches.map((item, index) => (
+                      <div className="source-excerpt" key={`${source.source_path}-${index}`}>
+                        <span className="location-chip">{locationOf(item)}</span>
+                        <p>{item.content}</p>
+                        <small>{item.match_count} 個詞組命中</small>
+                      </div>
+                    ))}
                   </div>
                 </article>
               ))}

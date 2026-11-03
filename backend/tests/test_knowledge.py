@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 import pytest
 from openpyxl import Workbook
@@ -124,6 +125,24 @@ def test_keyword_search_matches_chinese_terms_across_line_breaks(tmp_path: Path)
     results = service.search("螺絲柱設計")
 
     assert [result.source_path for result in results] == ["exact.pptx", "split.pptx"]
+
+
+def test_keyword_search_can_sort_by_source_modified_date(tmp_path: Path) -> None:
+    knowledge = tmp_path / "knowledge"
+    knowledge.mkdir()
+    older = knowledge / "older.pptx"
+    newer = knowledge / "newer.pptx"
+    make_pptx(older, "Spacer torque design")
+    make_pptx(newer, "Spacer torque design")
+    os.utime(older, (1_700_000_000, 1_700_000_000))
+    os.utime(newer, (1_800_000_000, 1_800_000_000))
+    service = KnowledgeService(knowledge, tmp_path / "index.json")
+    service.index_file("older.pptx")
+    service.index_file("newer.pptx")
+
+    results = service.search("Spacer", sort_by="recent")
+
+    assert [result.source_path for result in results] == ["newer.pptx", "older.pptx"]
 
 
 def test_path_traversal_is_rejected(tmp_path: Path) -> None:

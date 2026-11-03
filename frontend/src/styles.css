@@ -75,6 +75,14 @@ button, input { font: inherit; }
 .location-chip { display: inline-block; margin-top: 11px; padding: 5px 8px; border-radius: 5px; color: #536d86; background: #eef3f7; font-size: 11px; }
 .source-item > p { margin: 10px 0; color: #586675; font-size: 13px; line-height: 1.7; white-space: pre-line; }
 .source-foot { display: flex; gap: 14px; flex-wrap: wrap; color: #929ba4; font-size: 10px; }
+.section-title-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.section-title-row > h3 { margin-bottom: 11px; }
+.sort-control { display: flex; align-items: center; gap: 7px; margin-bottom: 11px; color: #89939d; font-size: 11px; }
+.sort-control select { border: 1px solid #e0e4e8; border-radius: 6px; padding: 5px 8px; color: #53677a; background: #fff; font: inherit; }
+.source-matches { margin-top: 4px; }
+.source-excerpt + .source-excerpt { margin-top: 10px; padding-top: 10px; border-top: 1px solid #edf0f2; }
+.source-excerpt > p { margin: 7px 0 5px; color: #586675; font-size: 13px; line-height: 1.7; white-space: pre-line; }
+.source-excerpt > small { color: #929ba4; font-size: 10px; }
 .no-sources { display: flex; align-items: flex-start; gap: 9px; padding: 13px; border: 1px dashed #dce1e5; border-radius: 9px; color: #7c8791; font-size: 12px; line-height: 1.6; }
 .no-sources svg { flex: none; color: #70869a; }
 .answer-footer { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; padding-top: 12px; border-top: 1px solid #eef0f2; color: #a1a8af; font-size: 10px; }

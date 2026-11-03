@@ -50,9 +50,10 @@ def scan_knowledge():
 def search_knowledge(
     q: str = Query(min_length=1, description="Case-insensitive keyword query"),
     limit: int = Query(default=10, ge=1, le=100),
+    sort_by: str = Query(default="relevance", pattern="^(relevance|recent)$"),
 ):
     try:
-        results = get_knowledge_service().search(q, limit=limit)
+        results = get_knowledge_service().search(q, limit=limit, sort_by=sort_by)
         return SearchResponse(query=q, result_count=len(results), results=results)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
