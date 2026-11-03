@@ -13,6 +13,16 @@ Browser (React/Vite) -> FastAPI -> Knowledge service -> local searchable index. 
 
 The exact server protocol and path are not yet confirmed. Support should be selected after MIS confirms whether the share is SMB/Windows file share, NFS, or another managed interface. Do not hardcode a server address or share path in source code.
 
+## Current access discovery
+
+- The project owner can already open and download files from the company document server using their company computer.
+- This confirms end-user access, but does not yet confirm that the future application host can reach the same server share. MIS must verify host-to-server connectivity and provision a dedicated read-only service identity before integration.
+
+## UI visual direction
+
+- The icon style shown in the current V1 search interface has been approved by the project owner.
+- Keep the same icon family and visual treatment across subsequent screens: consistent stroke weight, restrained/simple forms, and a consistent monochrome treatment. Prefer the existing `lucide-react` icon set already used by the frontend; do not introduce a second icon library without approval.
+
 ## MIS access prerequisites
 
 1. RD identifies the approved document folder(s) and provides the existing path to MIS through company-approved channels.
