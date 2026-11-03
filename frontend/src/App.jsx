@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BookOpen,
   CircleCheck,
@@ -70,10 +70,43 @@ export default function App() {
   const [scanning, setScanning] = useState(false);
   const [scanMessage, setScanMessage] = useState("");
   const [sortBy, setSortBy] = useState("relevance");
+  const [visuals, setVisuals] = useState([]);
+  const [visualsLoading, setVisualsLoading] = useState(false);
 
   const question = searched ? query : exampleQuestion;
   const bullets = searched ? results.slice(0, 3).map((item) => item.content) : examplePoints;
   const sourceGroups = groupSources(results);
+  const visualSource = results[0];
+
+  useEffect(() => {
+    let active = true;
+    setVisuals([]);
+    if (!searched || !visualSource || (!visualSource.page_number && !visualSource.slide_number)) {
+      setVisualsLoading(false);
+      return () => { active = false; };
+    }
+
+    const params = new URLSearchParams({ path: visualSource.source_path });
+    if (visualSource.page_number) params.set("page_number", visualSource.page_number);
+    if (visualSource.slide_number) params.set("slide_number", visualSource.slide_number);
+    setVisualsLoading(true);
+    fetch(`${API}/api/v1/knowledge/visuals?${params.toString()}`)
+      .then((response) => {
+        if (!response.ok) throw new Error(`圖面服務回應 ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        if (active) setVisuals(data.assets || []);
+      })
+      .catch(() => {
+        if (active) setVisuals([]);
+      })
+      .finally(() => {
+        if (active) setVisualsLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [searched, visualSource?.source_path, visualSource?.page_number, visualSource?.slide_number]);
 
   async function performSearch(q, ordering) {
     setLoading(true);
@@ -169,11 +202,23 @@ export default function App() {
 
         <section className="answer-section">
           <h3>A. 工程結構圖示</h3>
-          <div className="diagram-placeholder">
-            <div className="diagram-icon"><ImageIcon size={30} strokeWidth={1.5} /></div>
-            <strong>{searched && results[0] ? results[0].source_name : "工程圖預覽區"}</strong>
-            <p>目前索引尚未擷取文件中的圖面。後續會在此呈現原始圖示並連結文件位置。</p>
-            {searched && results[0] && <span>{locationOf(results[0])}</span>}
+          <div className={`diagram-placeholder ${visuals.length ? "has-visuals" : ""}`}>
+            {visuals.length ? (
+              <>
+                <div className="diagram-images">
+                  {visuals.map((asset, index) => <img key={`${asset.filename}-${index}`} src={`data:${asset.content_type};base64,${asset.data_base64}`} alt={`${visualSource.source_name} ${locationOf(visualSource)} embedded image ${index + 1}`} />)}
+                </div>
+                <strong>{visualSource.source_name}</strong>
+                <span>{locationOf(visualSource)} · 原始文件嵌入圖片</span>
+              </>
+            ) : (
+              <>
+                <div className="diagram-icon"><ImageIcon size={30} strokeWidth={1.5} /></div>
+                <strong>{searched && visualSource ? visualSource.source_name : "工程圖預覽區"}</strong>
+                <p>{visualsLoading ? "正在讀取原始文件圖片…" : searched ? "此頁或投影片沒有可直接抽取的嵌入圖片；若圖面由向量元素組成，需再以原始頁面或投影片渲染。" : "搜尋後會嘗試顯示命中頁面或投影片中的原始嵌入圖片。"}</p>
+                {searched && visualSource && <span>{locationOf(visualSource)}</span>}
+              </>
+            )}
           </div>
         </section>
 

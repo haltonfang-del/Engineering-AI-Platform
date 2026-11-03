@@ -64,6 +64,11 @@ button, input { font: inherit; }
 .diagram-placeholder strong { margin-top: 12px; font-size: 13px; font-weight: 600; }
 .diagram-placeholder p { max-width: 470px; margin: 7px 0 0; color: #818a94; font-size: 12px; line-height: 1.65; }
 .diagram-placeholder > span { margin-top: 9px; padding: 5px 9px; border-radius: 5px; background: #e8edf2; color: #5d6d7e; font-size: 11px; }
+.diagram-placeholder.has-visuals { display: block; min-height: 0; padding: 12px; }
+.diagram-images { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.diagram-images img { display: block; max-width: 100%; max-height: 680px; object-fit: contain; border: 1px solid #e1e4e7; border-radius: 7px; background: #fff; }
+.diagram-placeholder.has-visuals > strong { display: block; margin-top: 12px; }
+.diagram-placeholder.has-visuals > span { display: inline-block; }
 .source-section { margin-top: 21px; }
 .source-list { display: grid; gap: 10px; }
 .source-item { padding: 14px; border: 1px solid #e5e8eb; border-radius: 10px; background: #fff; }

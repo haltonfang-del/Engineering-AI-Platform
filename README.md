@@ -23,8 +23,9 @@ The API docs are available at `/docs`. The root and `/api/v1/health` endpoints r
 - `POST /api/v1/knowledge/index` with JSON body `{"path":"sample.pptx"}` indexes a single file relative to `KNOWLEDGE_ROOT`.
 - `POST /api/v1/knowledge/scan` recursively indexes supported files, skips unchanged files, and drops stale index entries when source files are removed.
 - `GET /api/v1/knowledge/search?q=torque` returns keyword matches with source locations.
+- `GET /api/v1/knowledge/visuals?path=guide.pptx&slide_number=3` returns embedded images from a matching PDF page or PowerPoint slide for local display.
 - `KNOWLEDGE_INDEX_PATH` controls the local JSON index path (default: `.knowledge_index/index.json`).
 
-Supported formats: `.pdf`, `.pptx`, `.xlsx`, and `.docx`. Legacy `.ppt` and `.xls` conversion is disabled by default; to enable it, install LibreOffice and set `ENABLE_LEGACY_CONVERSION=true`. OCR and image/diagram interpretation are not included; results point back to the source document and extracted text locations.
+Supported formats: `.pdf`, `.pptx`, `.xlsx`, and `.docx`. Embedded images on matching PDF pages and PowerPoint slides can be displayed beside their source locations. Legacy `.ppt` and `.xls` conversion is disabled by default; to enable it, install LibreOffice and set `ENABLE_LEGACY_CONVERSION=true`. OCR, vector-slide rendering, and AI image/diagram interpretation are not included.
 
 Do not place confidential company documents in this public repository. Local knowledge files, indexes, and `.env` files are excluded from Git.

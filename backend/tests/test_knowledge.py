@@ -1,13 +1,17 @@
 from pathlib import Path
 import os
+import base64
+from io import BytesIO
 
 import pytest
 from openpyxl import Workbook
 from docx import Document
+from PIL import Image
 from pptx import Presentation
 from pptx.util import Inches
 from pypdf import PdfWriter
 from reportlab.pdfgen import canvas
+from reportlab.lib.utils import ImageReader
 
 from app.knowledge.parsers.dispatcher import parse_document
 from app.knowledge.parsers.legacy import LegacyConversionError, parse_legacy
@@ -45,6 +49,25 @@ def make_blank_pdf(path: Path) -> None:
     writer.add_blank_page(width=72, height=72)
     with path.open("wb") as stream:
         writer.write(stream)
+
+
+def make_png_bytes() -> bytes:
+    buffer = BytesIO()
+    Image.new("RGB", (12, 8), (20, 120, 210)).save(buffer, format="PNG")
+    return buffer.getvalue()
+
+
+def make_pdf_with_image(path: Path, image_bytes: bytes) -> None:
+    document = canvas.Canvas(str(path))
+    document.drawImage(ImageReader(BytesIO(image_bytes)), 72, 640, width=120, height=80)
+    document.save()
+
+
+def make_pptx_with_image(path: Path, image_path: Path) -> None:
+    presentation = Presentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[5])
+    slide.shapes.add_picture(str(image_path), Inches(1), Inches(1), width=Inches(3))
+    presentation.save(path)
 
 
 def make_docx(path: Path) -> None:
@@ -143,6 +166,39 @@ def test_keyword_search_can_sort_by_source_modified_date(tmp_path: Path) -> None
     results = service.search("Spacer", sort_by="recent")
 
     assert [result.source_path for result in results] == ["newer.pptx", "older.pptx"]
+
+
+def test_pdf_visual_extraction_returns_embedded_image(tmp_path: Path) -> None:
+    knowledge = tmp_path / "knowledge"
+    knowledge.mkdir()
+    image_bytes = make_png_bytes()
+    make_pdf_with_image(knowledge / "diagram.pdf", image_bytes)
+    service = KnowledgeService(knowledge, tmp_path / "index.json")
+
+    response = service.extract_visuals("diagram.pdf", page_number=1)
+
+    assert response["location"] == "Page 1"
+    assert response["assets"]
+    assert response["assets"][0]["content_type"].startswith("image/")
+    assert base64.b64decode(response["assets"][0]["data_base64"])
+
+
+def test_pptx_visual_extraction_returns_embedded_image(tmp_path: Path) -> None:
+    knowledge = tmp_path / "knowledge"
+    knowledge.mkdir()
+    image_path = tmp_path / "embedded.png"
+    image_path.write_bytes(make_png_bytes())
+    source = knowledge / "diagram.pptx"
+    make_pptx_with_image(source, image_path)
+    original_mtime = source.stat().st_mtime_ns
+    service = KnowledgeService(knowledge, tmp_path / "index.json")
+
+    response = service.extract_visuals("diagram.pptx", slide_number=1)
+
+    assert response["location"] == "Slide 1"
+    assert len(response["assets"]) == 1
+    assert base64.b64decode(response["assets"][0]["data_base64"])
+    assert source.stat().st_mtime_ns == original_mtime
 
 
 def test_path_traversal_is_rejected(tmp_path: Path) -> None:

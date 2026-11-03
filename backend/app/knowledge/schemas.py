@@ -35,6 +35,19 @@ class ScanResponse(BaseModel):
     chunks_indexed: int
 
 
+class VisualAsset(BaseModel):
+    filename: str
+    content_type: str
+    data_base64: str
+
+
+class VisualsResponse(BaseModel):
+    source_path: str
+    location: str
+    assets: list[VisualAsset]
+    truncated: bool = False
+
+
 class SearchResult(BaseModel):
     content: str
     source_name: str

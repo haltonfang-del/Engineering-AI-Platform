@@ -1,4 +1,6 @@
+import base64
 import json
+import mimetypes
 import os
 import math
 import re
@@ -119,6 +121,83 @@ class KnowledgeService:
             "files_unchanged": unchanged,
             "files_removed": removed,
             "chunks_indexed": chunks_indexed,
+        }
+
+    def extract_visuals(
+        self,
+        relative_path: str,
+        page_number: int | None = None,
+        slide_number: int | None = None,
+    ) -> dict:
+        source = self.resolve_source(relative_path)
+        if (page_number is None) == (slide_number is None):
+            raise ValueError("Provide exactly one PDF page number or PowerPoint slide number.")
+
+        assets: list[dict] = []
+        total_bytes = 0
+        max_assets = 8
+        max_total_bytes = 20 * 1024 * 1024
+        truncated = False
+
+        def add_asset(filename: str, content_type: str, data: bytes) -> bool:
+            nonlocal total_bytes, truncated
+            if len(assets) >= max_assets or total_bytes + len(data) > max_total_bytes:
+                truncated = True
+                return False
+            assets.append({
+                "filename": filename,
+                "content_type": content_type,
+                "data_base64": base64.b64encode(data).decode("ascii"),
+            })
+            total_bytes += len(data)
+            return True
+
+        if source.suffix.lower() == ".pdf":
+            if page_number is None or slide_number is not None:
+                raise ValueError("A PDF visual request requires page_number only.")
+            from pypdf import PdfReader
+
+            reader = PdfReader(str(source))
+            if page_number < 1 or page_number > len(reader.pages):
+                raise ValueError("PDF page number is outside the document.")
+            for image in reader.pages[page_number - 1].images:
+                filename = str(image.name)
+                content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+                if not add_asset(filename, content_type, image.data):
+                    break
+            location = f"Page {page_number}"
+        elif source.suffix.lower() == ".pptx":
+            if slide_number is None or page_number is not None:
+                raise ValueError("A PowerPoint visual request requires slide_number only.")
+            from pptx import Presentation
+            from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+            presentation = Presentation(str(source))
+            if slide_number < 1 or slide_number > len(presentation.slides):
+                raise ValueError("PowerPoint slide number is outside the presentation.")
+
+            def picture_shapes(shapes):
+                for shape in shapes:
+                    if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                        yield shape
+                    elif shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                        yield from picture_shapes(shape.shapes)
+
+            slide = presentation.slides[slide_number - 1]
+            for image_number, shape in enumerate(picture_shapes(slide.shapes), start=1):
+                image = shape.image
+                filename = f"slide-{slide_number}-image-{image_number}.{image.ext}"
+                if not add_asset(filename, image.content_type, image.blob):
+                    break
+            location = f"Slide {slide_number}"
+        else:
+            raise ValueError("Visual extraction is supported for PDF and PPTX files only.")
+
+        return {
+            "source_path": source.relative_to(self.knowledge_root).as_posix(),
+            "location": location,
+            "assets": assets,
+            "truncated": truncated,
         }
 
     def search(self, query: str, limit: int = 10, sort_by: str = "relevance") -> list[SearchResult]:
