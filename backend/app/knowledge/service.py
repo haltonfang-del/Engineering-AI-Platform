@@ -1,11 +1,17 @@
 import json
 import os
+import math
+import re
+import unicodedata
 from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from app.knowledge.parsers.dispatcher import SUPPORTED_SUFFIXES, parse_document
 from app.knowledge.schemas import DocumentChunk, SearchResult
+
+CJK_RUN = re.compile(r"[\u3400-\u9fff]+")
+LATIN_TOKEN = re.compile(r"[a-z0-9]+", re.IGNORECASE)
 
 
 class KnowledgeService:
@@ -116,16 +122,27 @@ class KnowledgeService:
         }
 
     def search(self, query: str, limit: int = 10) -> list[SearchResult]:
-        normalized_query = query.strip().casefold()
+        normalized_query = unicodedata.normalize("NFKC", query).strip().casefold()
         if not normalized_query:
             raise ValueError("Search query must not be empty.")
-        results: list[SearchResult] = []
+        terms: list[str] = []
+        for match in CJK_RUN.finditer(normalized_query):
+            run = match.group(0)
+            terms.extend(run[index:index + 2] for index in range(len(run) - 1) if len(run) > 1)
+            if len(run) == 1:
+                terms.append(run)
+        terms.extend(match.group(0) for match in LATIN_TOKEN.finditer(normalized_query))
+        terms = list(dict.fromkeys(terms))
+        minimum_term_hits = max(1, math.ceil(len(terms) / 2))
+        results: list[tuple[int, SearchResult]] = []
         for document in self._read_index().values():
             for item in document.get("chunks", []):
-                content = str(item.get("content", ""))
-                count = content.casefold().count(normalized_query)
-                if count:
-                    results.append(SearchResult(
+                content = unicodedata.normalize("NFKC", str(item.get("content", ""))).casefold()
+                exact_count = content.count(normalized_query)
+                matched_terms = sum(1 for term in terms if term in content)
+                if exact_count or matched_terms >= minimum_term_hits:
+                    score = exact_count * (len(terms) + 1) + matched_terms
+                    results.append((score, SearchResult(
                         content=content,
                         source_name=item["source_name"],
                         source_path=item["source_path"],
@@ -138,7 +155,7 @@ class KnowledgeService:
                         paragraph_number=item.get("paragraph_number"),
                         table_number=item.get("table_number"),
                         source_modified_at=item.get("source_modified_at"),
-                        match_count=count,
-                    ))
-        results.sort(key=lambda result: (-result.match_count, result.source_path))
-        return results[:max(1, min(limit, 100))]
+                        match_count=exact_count + matched_terms,
+                    )))
+        results.sort(key=lambda item: (-item[0], item[1].source_path))
+        return [result for _, result in results[:max(1, min(limit, 100))]]

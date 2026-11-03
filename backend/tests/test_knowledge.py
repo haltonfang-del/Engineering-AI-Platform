@@ -13,11 +13,11 @@ from app.knowledge.parsers.legacy import LegacyConversionError, parse_legacy
 from app.knowledge.service import KnowledgeService
 
 
-def make_pptx(path: Path) -> None:
+def make_pptx(path: Path, text: str = "Spacer torque design") -> None:
     presentation = Presentation()
     slide = presentation.slides.add_slide(presentation.slide_layouts[5])
     box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(5), Inches(1))
-    box.text = "Spacer torque design"
+    box.text = text
     presentation.save(path)
 
 
@@ -110,6 +110,20 @@ def test_keyword_search_returns_source_metadata(tmp_path: Path) -> None:
     assert results
     assert results[0].slide_number == 1
     assert results[0].source_path == "sample.pptx"
+
+
+def test_keyword_search_matches_chinese_terms_across_line_breaks(tmp_path: Path) -> None:
+    knowledge = tmp_path / "knowledge"
+    knowledge.mkdir()
+    make_pptx(knowledge / "exact.pptx", "螺絲柱設計")
+    make_pptx(knowledge / "split.pptx", "螺絲柱\n設計")
+    service = KnowledgeService(knowledge, tmp_path / "index.json")
+    service.index_file("exact.pptx")
+    service.index_file("split.pptx")
+
+    results = service.search("螺絲柱設計")
+
+    assert [result.source_path for result in results] == ["exact.pptx", "split.pptx"]
 
 
 def test_path_traversal_is_rejected(tmp_path: Path) -> None:
